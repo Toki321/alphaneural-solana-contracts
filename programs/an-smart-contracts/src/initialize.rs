@@ -7,16 +7,20 @@ pub fn initialize(
     ctx: Context<Initialize>,
     admin: Pubkey,
     treasury: Pubkey,
-    fee: u8,
+    nft_sale_fee: u8,
+    sale_fee: u8,
 ) -> Result<()> {
-    msg!("Entered `initialize` function!");
-    require!(fee < constants::MAX_LIMIT, InitializeError::FeeTooBig);
+    require!(
+        nft_sale_fee < constants::MAX_NFT_SALE_FEE && sale_fee < constants::MAX_SALE_FEE,
+        AdminSettingsError::FeeTooBig
+    );
 
     let admin_settings = &mut ctx.accounts.admin_settings;
 
     admin_settings.admin = admin;
     admin_settings.treasury = treasury;
-    admin_settings.fee = fee;
+    admin_settings.nft_sale_fee = nft_sale_fee;
+    admin_settings.sale_fee = sale_fee;
 
     Ok(())
 }
@@ -49,13 +53,15 @@ pub struct Initialize<'info> {
 pub struct AdminSettings {
     pub admin: Pubkey,
     pub treasury: Pubkey,
-    pub fee: u8,
+    pub nft_sale_fee: u8,
+    pub sale_fee: u8,
 }
 
 pub const ADMIN_SETTINGS_SIZE: usize = 8 + // discriminator
 32 +  // admin
 32 + // treasury
-1; // fee (1 byte)
+1 +  // nft_sale_fee (1 byte)
+1; // sale_fee (1 byte)
 
 #[account]
 pub struct GlobalListings {
@@ -73,7 +79,7 @@ pub const GLOBAL_LISTINGS_SIZE: usize = 8 + // discriminator
 100 * (32+32); // 1000 listings * (1mint + 1seller); 1 pubkey is 32 bytes hence 32+32
 
 #[error_code]
-pub enum InitializeError {
+pub enum AdminSettingsError {
     #[msg("Fee is too big!")]
     FeeTooBig,
 }

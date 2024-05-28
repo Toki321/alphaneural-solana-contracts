@@ -16,14 +16,15 @@ describe.only("fn initialize", () => {
   const program = anchor.workspace
     .AnSmartContracts as Program<AnSmartContracts>;
 
-  it("should fail if fee is more than `MAX_SIZE`", async () => {
+  it("should fail if nftSaleFee is more than the max", async () => {
     const admin = signer.publicKey;
     const treasury = anchor.web3.Keypair.generate().publicKey;
-    const fee = 11;
+    const nftSaleFee = 11;
+    const saleFee = 5;
 
     try {
       await program.methods
-        .initialize(admin, treasury, fee)
+        .initialize(admin, treasury, nftSaleFee, saleFee)
         .accounts({
           deployer: admin,
         })
@@ -34,10 +35,30 @@ describe.only("fn initialize", () => {
     }
   });
 
-  it("should fail signer is not the deployer", async () => {
+  it("should fail if saleFee is more than the max", async () => {
+    const admin = signer.publicKey;
+    const treasury = anchor.web3.Keypair.generate().publicKey;
+    const nftSaleFee = 5;
+    const saleFee = 11;
+
+    try {
+      await program.methods
+        .initialize(admin, treasury, nftSaleFee, saleFee)
+        .accounts({
+          deployer: admin,
+        })
+        .signers([])
+        .rpc();
+    } catch (error) {
+      expect((error as AnchorError).error.errorCode.code).eq("FeeTooBig");
+    }
+  });
+
+  it("should fail if signer is not the deployer", async () => {
     const admin = anchor.web3.Keypair.generate();
     const treasury = anchor.web3.Keypair.generate().publicKey;
-    const fee = 11;
+    const nftSaleFee = 5;
+    const saleFee = 5;
 
     const airdrop = await provider.connection.requestAirdrop(
       admin.publicKey,
@@ -48,7 +69,7 @@ describe.only("fn initialize", () => {
 
     try {
       await program.methods
-        .initialize(admin.publicKey, treasury, fee)
+        .initialize(admin.publicKey, treasury, nftSaleFee, saleFee)
         .accounts({
           deployer: admin.publicKey,
         })
@@ -59,10 +80,11 @@ describe.only("fn initialize", () => {
     }
   });
 
-  it("should set admin settings successfully", async () => {
+  it("should set `AdminSettings` successfully", async () => {
     const admin = signer.publicKey;
     const treasury = anchor.web3.Keypair.generate().publicKey;
-    const fee = 5;
+    const nftSaleFee = 5;
+    const saleFee = 5;
 
     const [globalListingsPda, globalListingsBump] =
       PublicKey.findProgramAddressSync(
@@ -77,7 +99,7 @@ describe.only("fn initialize", () => {
       );
 
     await program.methods
-      .initialize(admin, treasury, fee)
+      .initialize(admin, treasury, nftSaleFee, saleFee)
       .accounts({
         deployer: admin,
       })
@@ -94,29 +116,19 @@ describe.only("fn initialize", () => {
     expect(globalListingsAccount.listings.length).eq(0);
     expect(adminSettingsAccount.admin.toString()).eq(admin.toString());
     expect(adminSettingsAccount.treasury.toString()).eq(treasury.toString());
-    expect(adminSettingsAccount.fee).eq(fee);
+    expect(adminSettingsAccount.nftSaleFee).eq(nftSaleFee);
+    expect(adminSettingsAccount.saleFee).eq(saleFee);
   });
 
   it("should fail if it has previously been called", async () => {
     const admin = signer.publicKey;
     const treasury = anchor.web3.Keypair.generate().publicKey;
-    const fee = 5;
-
-    const [globalListingsPda, globalListingsBump] =
-      PublicKey.findProgramAddressSync(
-        [Buffer.from("global_listings")],
-        program.programId
-      );
-
-    const [adminSettingsPda, adminSettingsBump] =
-      PublicKey.findProgramAddressSync(
-        [Buffer.from("admin_settings")],
-        program.programId
-      );
+    const nftSaleFee = 5;
+    const saleFee = 5;
 
     try {
       await program.methods
-        .initialize(admin, treasury, fee)
+        .initialize(admin, treasury, nftSaleFee, saleFee)
         .accounts({
           deployer: admin,
         })
