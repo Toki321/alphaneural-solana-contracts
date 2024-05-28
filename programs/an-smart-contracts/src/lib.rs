@@ -12,6 +12,9 @@ use mint::*;
 pub mod constants;
 use constants::*;
 
+pub mod modify_settings;
+use modify_settings::*;
+
 pub mod initialize;
 use initialize::*;
 
@@ -31,8 +34,13 @@ pub mod an_smart_contracts {
         list::list_nft(ctx, price)
     }
 
-    pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
-        initialize::initialize(ctx)
+    pub fn initialize(
+        ctx: Context<Initialize>,
+        admin: Pubkey,
+        treasury: Pubkey,
+        fee: u8,
+    ) -> Result<()> {
+        initialize::initialize(ctx, admin, treasury, fee)
     }
 
     pub fn delist_nft(ctx: Context<DelistNft>) -> Result<()> {

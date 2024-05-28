@@ -3,7 +3,17 @@ use anchor_lang::solana_program::program_error::ProgramError;
 
 use crate::constants;
 
-pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
+pub fn initialize(
+    ctx: Context<Initialize>,
+    admin: Pubkey,
+    treasury: Pubkey,
+    fee: u8,
+) -> Result<()> {
+    let admin_settings = &mut ctx.accounts.admin_settings;
+    admin_settings.admin = admin;
+    admin_settings.treasury = treasury;
+    admin_settings.fee = fee;
+
     Ok(())
 }
 
