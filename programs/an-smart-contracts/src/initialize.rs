@@ -9,7 +9,11 @@ pub fn initialize(
     treasury: Pubkey,
     fee: u8,
 ) -> Result<()> {
+    msg!("Entered `initialize` function!");
+    require!(fee < constants::MAX_LIMIT, InitializeError::FeeTooBig);
+
     let admin_settings = &mut ctx.accounts.admin_settings;
+
     admin_settings.admin = admin;
     admin_settings.treasury = treasury;
     admin_settings.fee = fee;
@@ -28,7 +32,6 @@ pub struct Initialize<'info> {
         seeds = [constants::ADMIN_SETTINGS.as_bytes()],
         bump,
         space = ADMIN_SETTINGS_SIZE,
-        constraint = admin_settings.fee <= constants::MAX_LIMIT @ ProgramError::InvalidArgument
     )]
     pub admin_settings: Account<'info, AdminSettings>,
     pub system_program: Program<'info, System>,
@@ -67,4 +70,10 @@ pub struct ListingReference {
 
 pub const GLOBAL_LISTINGS_SIZE: usize = 8 + // discriminator
 8 + // length of vector
-1000 * (32+32); // 1000 listings * (1mint + 1seller); 1 pubkey is 32 bytes hence 32+32
+100 * (32+32); // 1000 listings * (1mint + 1seller); 1 pubkey is 32 bytes hence 32+32
+
+#[error_code]
+pub enum InitializeError {
+    #[msg("Fee is too big!")]
+    FeeTooBig,
+}

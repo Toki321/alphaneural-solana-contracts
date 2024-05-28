@@ -83,12 +83,12 @@ describe("an-smart-contracts", () => {
       .signers([])
       .rpc();
 
-    const listingInfoAccount = await provider.connection.getAccountInfo(
-      listingInfoPda
-    );
-    if (listingInfoAccount === null) {
-      throw new Error("ListingInfo account not found");
-    }
+    // const listingInfoAccount = await provider.connection.getAccountInfo(
+    // listingInfoPda
+    // );
+    // if (listingInfoAccount === null) {
+    // throw new Error("ListingInfo account not found");
+    // }
 
     const decodedInfo = await program.account.listingInfo.fetch(listingInfoPda);
 
