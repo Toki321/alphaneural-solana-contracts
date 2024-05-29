@@ -3,7 +3,25 @@ use anchor_lang::solana_program::program_error::ProgramError;
 
 use crate::constants;
 
-pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
+pub fn initialize(
+    ctx: Context<Initialize>,
+    admin: Pubkey,
+    treasury: Pubkey,
+    nft_sale_fee: u8,
+    sale_fee: u8,
+) -> Result<()> {
+    require!(
+        nft_sale_fee < constants::MAX_NFT_SALE_FEE && sale_fee < constants::MAX_SALE_FEE,
+        AdminSettingsError::FeeTooBig
+    );
+
+    let admin_settings = &mut ctx.accounts.admin_settings;
+
+    admin_settings.admin = admin;
+    admin_settings.treasury = treasury;
+    admin_settings.nft_sale_fee = nft_sale_fee;
+    admin_settings.sale_fee = sale_fee;
+
     Ok(())
 }
 
@@ -18,7 +36,6 @@ pub struct Initialize<'info> {
         seeds = [constants::ADMIN_SETTINGS.as_bytes()],
         bump,
         space = ADMIN_SETTINGS_SIZE,
-        constraint = admin_settings.fee <= constants::MAX_LIMIT @ ProgramError::InvalidArgument
     )]
     pub admin_settings: Account<'info, AdminSettings>,
     pub system_program: Program<'info, System>,
@@ -36,13 +53,15 @@ pub struct Initialize<'info> {
 pub struct AdminSettings {
     pub admin: Pubkey,
     pub treasury: Pubkey,
-    pub fee: u8,
+    pub nft_sale_fee: u8,
+    pub sale_fee: u8,
 }
 
 pub const ADMIN_SETTINGS_SIZE: usize = 8 + // discriminator
 32 +  // admin
 32 + // treasury
-1; // fee (1 byte)
+1 +  // nft_sale_fee (1 byte)
+1; // sale_fee (1 byte)
 
 #[account]
 pub struct GlobalListings {
@@ -57,4 +76,10 @@ pub struct ListingReference {
 
 pub const GLOBAL_LISTINGS_SIZE: usize = 8 + // discriminator
 8 + // length of vector
-1000 * (32+32); // 1000 listings * (1mint + 1seller); 1 pubkey is 32 bytes hence 32+32
+100 * (32+32); // 1000 listings * (1mint + 1seller); 1 pubkey is 32 bytes hence 32+32
+
+#[error_code]
+pub enum AdminSettingsError {
+    #[msg("Fee is too big!")]
+    FeeTooBig,
+}
