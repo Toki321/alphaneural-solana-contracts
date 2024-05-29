@@ -8,7 +8,7 @@ import { expect } from "chai";
 // When testing functions that have `init` constraint it's important to test the fails first
 // because whenever an init function has been succesfully executed, it cannot be executed succesfully
 // again because `init` can only happen once in a lifecycle of a solana program, unless account is closed
-describe.only("fn initialize", () => {
+describe("fn initialize", () => {
   const provider = anchor.AnchorProvider.env();
   anchor.setProvider(provider);
 
