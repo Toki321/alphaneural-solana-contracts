@@ -7,13 +7,12 @@ use anchor_spl::{
     },
     token::{self, Mint, Token, TokenAccount},
 };
-use mpl_token_metadata::types::DataV2;
+use mpl_token_metadata::types::{Creator, DataV2};
 
 pub fn mint_nft(ctx: Context<MintNft>, name: String, symbol: String) -> Result<()> {
-    msg!("Minting token to token account...");
     msg!("Mint: {}", &ctx.accounts.mint.to_account_info().key());
     msg!(
-        "Token Address: {}",
+        "Token Account Address: {}",
         &ctx.accounts.associated_token_account.key()
     );
 
@@ -42,12 +41,18 @@ pub fn mint_nft(ctx: Context<MintNft>, name: String, symbol: String) -> Result<(
         },
     );
 
+    let creator = Creator {
+        address: *ctx.accounts.signer.key,
+        verified: false,
+        share: 100,
+    };
+
     let data_v2 = DataV2 {
         name,
         symbol,
         uri: "https://alphaneural.io/".to_string(),
         seller_fee_basis_points: 0,
-        creators: None,
+        creators: Some(vec![creator]),
         collection: None,
         uses: None,
     };
@@ -60,8 +65,8 @@ pub fn mint_nft(ctx: Context<MintNft>, name: String, symbol: String) -> Result<(
             edition: ctx.accounts.master_edition_account.to_account_info(),
             mint: ctx.accounts.mint.to_account_info(),
             update_authority: ctx.accounts.signer.to_account_info(),
-            payer: ctx.accounts.signer.to_account_info(),
             mint_authority: ctx.accounts.signer.to_account_info(),
+            payer: ctx.accounts.signer.to_account_info(),
             metadata: ctx.accounts.metadata_account.to_account_info(),
             token_program: ctx.accounts.token_program.to_account_info(),
             system_program: ctx.accounts.system_program.to_account_info(),
@@ -69,7 +74,7 @@ pub fn mint_nft(ctx: Context<MintNft>, name: String, symbol: String) -> Result<(
         },
     );
 
-    create_master_edition_v3(cpi_context, None)?;
+    create_master_edition_v3(cpi_context, Some(0))?;
 
     Ok(())
 }
@@ -100,6 +105,7 @@ pub struct MintNft<'info> {
     /// CHECK: We're about to create this with Metaplex
     #[account(mut)]
     pub master_edition_account: AccountInfo<'info>,
+
     pub token_program: Program<'info, Token>,
     pub associated_token_program: Program<'info, AssociatedToken>,
     pub token_metadata_program: Program<'info, Metadata>,
