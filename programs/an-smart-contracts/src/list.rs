@@ -56,7 +56,7 @@ pub struct ListNft<'info> {
     #[account(
         init,
         payer = seller,
-        space = 8 + 8 + 32 + 32,
+        space = LISTING_INFO_SIZE,
         seeds = [constants::LISTING.as_bytes(), mint.key().as_ref(), seller.key().as_ref()],
         bump,
     )]
@@ -96,3 +96,8 @@ pub enum ListError {
     #[msg("Invalid token amount.")]
     InvalidTokenAmount,
 }
+
+pub const LISTING_INFO_SIZE: usize = 8 + // discriminator
+8 +  // price
+32 + // seller
+32; // mint
