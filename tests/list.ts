@@ -1,5 +1,5 @@
 import * as anchor from "@coral-xyz/anchor";
-import { Program } from "@coral-xyz/anchor";
+import { AnchorError, Program } from "@coral-xyz/anchor";
 import { PublicKey } from "@solana/web3.js";
 import { AccountLayout, getAssociatedTokenAddress } from "@solana/spl-token";
 import {
@@ -13,7 +13,7 @@ import { publicKey } from "@metaplex-foundation/umi";
 import { createUmi } from "@metaplex-foundation/umi-bundle-defaults";
 import { expect } from "chai";
 
-describe("an-smart-contracts", () => {
+describe("fn list", () => {
   const provider = anchor.AnchorProvider.env();
   anchor.setProvider(provider);
 
@@ -25,7 +25,7 @@ describe("an-smart-contracts", () => {
     .use(walletAdapterIdentity(signer))
     .use(mplTokenMetadata());
 
-  it("should list an nft", async () => {
+  it("should fail to list NFT if initialize fn has not been called yet", async () => {
     const mint = anchor.web3.Keypair.generate();
 
     const metadataAccount = findMetadataPda(umi, {
@@ -58,9 +58,71 @@ describe("an-smart-contracts", () => {
       .signers([mint])
       .rpc();
 
-    console.log("Finished minting!");
-    console.log("seller: ", signer.publicKey);
-    console.log("mint: ", mint.publicKey);
+    const price = new anchor.BN(1000);
+
+    try {
+      await program.methods
+        .listNft(price)
+        .accounts({
+          seller: signer.publicKey,
+          mint: mint.publicKey,
+          tokenAccount: associatedTokenAccount,
+          // listingInfo: listingInfoPda,
+        })
+        .signers([])
+        .rpc();
+    } catch (error) {
+      expect((error as AnchorError).error.errorCode.code).equal(
+        "AccountNotInitialized"
+      );
+    }
+  });
+
+  it("should list an NFT successfully", async () => {
+    const mint = anchor.web3.Keypair.generate();
+
+    const metadataAccount = findMetadataPda(umi, {
+      mint: publicKey(mint.publicKey),
+    })[0];
+
+    const masterEditionAccount = findMasterEditionPda(umi, {
+      mint: publicKey(mint.publicKey),
+    })[0];
+
+    const associatedTokenAccount = await getAssociatedTokenAddress(
+      mint.publicKey,
+      signer.publicKey
+    );
+
+    const admin = signer.publicKey;
+    const treasury = anchor.web3.Keypair.generate().publicKey;
+    const nftSaleFee = 5;
+    const saleFee = 5;
+
+    await program.methods
+      .initialize(admin, treasury, nftSaleFee, saleFee)
+      .accounts({
+        deployer: admin,
+      })
+      .signers([])
+      .rpc();
+
+    const metadata = {
+      name: "Kobeni",
+      symbol: "KBN",
+    };
+
+    await program.methods
+      .mintNft(metadata.name, metadata.symbol)
+      .accounts({
+        signer: signer.publicKey,
+        mint: mint.publicKey,
+        associatedTokenAccount,
+        metadataAccount,
+        masterEditionAccount,
+      })
+      .signers([mint])
+      .rpc();
 
     const price = new anchor.BN(1000);
     const [listingInfoPda, bump] = PublicKey.findProgramAddressSync(
@@ -83,26 +145,227 @@ describe("an-smart-contracts", () => {
       .signers([])
       .rpc();
 
-    // const listingInfoAccount = await provider.connection.getAccountInfo(
-    // listingInfoPda
-    // );
-    // if (listingInfoAccount === null) {
-    // throw new Error("ListingInfo account not found");
-    // }
+    const rawListingInfo = await program.account.listingInfo.getAccountInfo(
+      listingInfoPda
+    );
+    expect(rawListingInfo.owner.toString()).equal(program.programId.toString());
 
-    const decodedInfo = await program.account.listingInfo.fetch(listingInfoPda);
+    const listingInfo = await program.account.listingInfo.fetch(listingInfoPda);
+    expect(listingInfo.seller.toString()).equal(signer.publicKey.toString());
+    expect(listingInfo.price.toString()).equal(price.toString());
+    expect(listingInfo.mint.toString()).equal(mint.publicKey.toString());
 
-    expect(decodedInfo.mint.toString()).to.equal(mint.publicKey.toString());
-    expect(decodedInfo.price.toString()).to.equal(price.toString());
-    expect(decodedInfo.seller.toString()).to.equal(signer.publicKey.toString());
-
-    const accountInfo = await provider.connection.getAccountInfo(
+    const rawTokenAccount = await provider.connection.getAccountInfo(
       associatedTokenAccount
     );
-    const tokenAccountInfo = AccountLayout.decode(
-      Buffer.from(accountInfo.data)
+    const decodedTokenAccount = AccountLayout.decode(
+      Buffer.from(rawTokenAccount.data)
     );
-    expect(tokenAccountInfo.delegate.toString()).to.equal(
+    expect(decodedTokenAccount.delegate.toString()).to.equal(
+      program.programId.toString()
+    );
+  });
+
+  it("should fail to list NFT if lister is not the owner of NFT", async () => {
+    const mint = anchor.web3.Keypair.generate();
+
+    const metadataAccount = findMetadataPda(umi, {
+      mint: publicKey(mint.publicKey),
+    })[0];
+
+    const masterEditionAccount = findMasterEditionPda(umi, {
+      mint: publicKey(mint.publicKey),
+    })[0];
+
+    const associatedTokenAccount = await getAssociatedTokenAddress(
+      mint.publicKey,
+      signer.publicKey
+    );
+
+    const nonOwner = anchor.web3.Keypair.generate();
+
+    const metadata = {
+      name: "Kobeni",
+      symbol: "KBN",
+    };
+
+    await program.methods
+      .mintNft(metadata.name, metadata.symbol)
+      .accounts({
+        signer: signer.publicKey,
+        mint: mint.publicKey,
+        associatedTokenAccount,
+        metadataAccount,
+        masterEditionAccount,
+      })
+      .signers([mint])
+      .rpc();
+
+    const price = new anchor.BN(1000);
+
+    try {
+      await program.methods
+        .listNft(price)
+        .accounts({
+          seller: nonOwner.publicKey, // Use the non-owner wallet here
+          mint: mint.publicKey,
+          tokenAccount: associatedTokenAccount,
+          // listingInfo: listingInfoPda,
+        })
+        .signers([nonOwner])
+        .rpc();
+    } catch (error) {
+      expect((error as AnchorError).logs).to.exist;
+    }
+  });
+
+  it("should list 2 listings for 2 different NFTs successfully", async () => {
+    const mint = anchor.web3.Keypair.generate();
+
+    const metadataAccount = findMetadataPda(umi, {
+      mint: publicKey(mint.publicKey),
+    })[0];
+
+    const masterEditionAccount = findMasterEditionPda(umi, {
+      mint: publicKey(mint.publicKey),
+    })[0];
+
+    const associatedTokenAccount = await getAssociatedTokenAddress(
+      mint.publicKey,
+      signer.publicKey
+    );
+
+    const metadata = {
+      name: "Kobeni",
+      symbol: "KBN",
+    };
+
+    await program.methods
+      .mintNft(metadata.name, metadata.symbol)
+      .accounts({
+        signer: signer.publicKey,
+        mint: mint.publicKey,
+        associatedTokenAccount,
+        metadataAccount,
+        masterEditionAccount,
+      })
+      .signers([mint])
+      .rpc();
+
+    const price = new anchor.BN(1000);
+    await program.methods
+      .listNft(price)
+      .accounts({
+        seller: signer.publicKey,
+        mint: mint.publicKey,
+        tokenAccount: associatedTokenAccount,
+        // listingInfo: listingInfoPda,
+      })
+      .signers([])
+      .rpc();
+
+    const price2 = new anchor.BN(1000);
+    const newMint = anchor.web3.Keypair.generate();
+    const newMetadataAccount = findMetadataPda(umi, {
+      mint: publicKey(newMint.publicKey),
+    })[0];
+
+    const newMasterEditionAccount = findMasterEditionPda(umi, {
+      mint: publicKey(newMint.publicKey),
+    })[0];
+
+    const newAssociatedTokenAccount = await getAssociatedTokenAddress(
+      newMint.publicKey,
+      signer.publicKey
+    );
+
+    await program.methods
+      .mintNft(metadata.name, metadata.symbol)
+      .accounts({
+        signer: signer.publicKey,
+        mint: newMint.publicKey,
+        associatedTokenAccount: newAssociatedTokenAccount,
+        metadataAccount: newMetadataAccount,
+        masterEditionAccount: newMasterEditionAccount,
+      })
+      .signers([newMint])
+      .rpc();
+
+    await program.methods
+      .listNft(price2)
+      .accounts({
+        seller: signer.publicKey,
+        mint: newMint.publicKey,
+        tokenAccount: newAssociatedTokenAccount,
+        // listingInfo: listingInfoPda,
+      })
+      .signers([])
+      .rpc();
+
+    const [listingInfoPda1, bump1] = PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("listing"),
+        mint.publicKey.toBuffer(),
+        signer.publicKey.toBuffer(),
+      ],
+      program.programId
+    );
+    const [listingInfoPda2, bump2] = PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("listing"),
+        newMint.publicKey.toBuffer(),
+        signer.publicKey.toBuffer(),
+      ],
+      program.programId
+    );
+
+    // Verify the first listing
+    const rawListingInfo1 = await program.account.listingInfo.getAccountInfo(
+      listingInfoPda1
+    );
+    expect(rawListingInfo1.owner.toString()).equal(
+      program.programId.toString()
+    );
+
+    const listingInfo1 = await program.account.listingInfo.fetch(
+      listingInfoPda1
+    );
+    expect(listingInfo1.seller.toString()).equal(signer.publicKey.toString());
+    expect(listingInfo1.price.toString()).equal(price.toString());
+    expect(listingInfo1.mint.toString()).equal(mint.publicKey.toString());
+
+    const rawTokenAccount1 = await provider.connection.getAccountInfo(
+      associatedTokenAccount
+    );
+    const decodedTokenAccount1 = AccountLayout.decode(
+      Buffer.from(rawTokenAccount1.data)
+    );
+    expect(decodedTokenAccount1.delegate.toString()).to.equal(
+      program.programId.toString()
+    );
+
+    // Verify the second listing
+    const rawListingInfo2 = await program.account.listingInfo.getAccountInfo(
+      listingInfoPda2
+    );
+    expect(rawListingInfo2.owner.toString()).equal(
+      program.programId.toString()
+    );
+
+    const listingInfo2 = await program.account.listingInfo.fetch(
+      listingInfoPda2
+    );
+    expect(listingInfo2.seller.toString()).equal(signer.publicKey.toString());
+    expect(listingInfo2.price.toString()).equal(price2.toString());
+    expect(listingInfo2.mint.toString()).equal(newMint.publicKey.toString());
+
+    const rawTokenAccount2 = await provider.connection.getAccountInfo(
+      newAssociatedTokenAccount
+    );
+    const decodedTokenAccount2 = AccountLayout.decode(
+      Buffer.from(rawTokenAccount2.data)
+    );
+    expect(decodedTokenAccount2.delegate.toString()).to.equal(
       program.programId.toString()
     );
   });
