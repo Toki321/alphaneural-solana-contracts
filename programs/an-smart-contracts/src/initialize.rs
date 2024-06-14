@@ -46,7 +46,7 @@ pub struct Initialize<'info> {
         bump,
         space = GLOBAL_LISTINGS_SIZE
     )]
-    pub listings_accounts: Account<'info, GlobalListings>,
+    pub global_listings_account: Account<'info, GlobalListings>,
 }
 
 #[account]
@@ -74,9 +74,13 @@ pub struct ListingReference {
     pub seller: Pubkey,
 }
 
+/// Solana has a limit of 10240 which is 10kb (1024 bytes x 10 = 10240) per init/reallloc
+/// We use the max number of listings we can store which is about 159.
+/// Which equates to 10192 bytes
+/// Use Increase Listings Space function to increase the amount of listings we can store
 pub const GLOBAL_LISTINGS_SIZE: usize = 8 + // discriminator
-8 + // length of vector
-100 * (32+32); // 1000 listings * (1mint + 1seller); 1 pubkey is 32 bytes hence 32+32
+4 + // length of vector
+159 * (32+32); // 100 listings * (1mint + 1seller);
 
 #[error_code]
 pub enum AdminSettingsError {

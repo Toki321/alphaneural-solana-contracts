@@ -43,7 +43,10 @@ pub fn list_nft(ctx: Context<ListNft>, price: u64) -> Result<()> {
         mint: ctx.accounts.mint.key(),
         seller: ctx.accounts.seller.key(),
     };
-    ctx.accounts.listings_accounts.listings.push(listing_ref);
+    ctx.accounts
+        .global_listings_account
+        .listings
+        .push(listing_ref);
 
     Ok(())
 }
@@ -79,7 +82,7 @@ pub struct ListNft<'info> {
         bump,
         // space = 8 + (40 * 100)
     )]
-    pub listings_accounts: Account<'info, GlobalListings>,
+    pub global_listings_account: Account<'info, GlobalListings>,
 }
 
 #[account]

@@ -17,6 +17,9 @@ use modify_settings::*;
 pub mod initialize;
 use initialize::*;
 
+pub mod listings_space;
+use listings_space::*;
+
 declare_id!("4C7npwRXR3adn6MzkVay5tyuFgMYCAJCUt3GR5aTzAzu");
 
 #[program]
