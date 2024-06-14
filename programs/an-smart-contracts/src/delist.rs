@@ -24,7 +24,7 @@ pub fn delist_nft(ctx: Context<DelistNft>) -> Result<()> {
     // Remove the listing from the global listings
     let mint_to_remove = listing_info.mint;
     ctx.accounts
-        .listings_accounts
+        .global_listings_account
         .listings
         .retain(|listing| listing.mint != mint_to_remove);
 
@@ -50,8 +50,6 @@ pub struct DelistNft<'info> {
         mut,
         constraint = associated_token_account.mint == mint.key(),
         constraint = associated_token_account.owner == seller.key(),
-        // constraint = associated_token_account.delegate.unwrap() == ctx.accounts.alphaneural_program.key(),
-        // constraint = associated_token_account.delegated_amount == 1,
     )]
     pub associated_token_account: Account<'info, TokenAccount>,
     #[account(
@@ -59,7 +57,7 @@ pub struct DelistNft<'info> {
         seeds = [b"global_listings"],
         bump,
     )]
-    pub listings_accounts: Account<'info, GlobalListings>,
+    pub global_listings_account: Account<'info, GlobalListings>,
     pub token_program: Program<'info, Token>,
     pub alphaneural_program: Program<'info, AnSmartContracts>,
 }
