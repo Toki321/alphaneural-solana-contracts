@@ -135,6 +135,17 @@ describe("fn list", () => {
       program.programId
     );
 
+    const [globalListingsPda, _] = PublicKey.findProgramAddressSync(
+      [Buffer.from("global_listings")],
+      program.programId
+    );
+
+    let globalListings = await program.account.globalListings.fetch(
+      globalListingsPda
+    );
+    const initialListingsCount = globalListings.listings.length;
+    expect(initialListingsCount).eq(0);
+
     await program.methods
       .listNft(price)
       .accounts({
@@ -165,6 +176,23 @@ describe("fn list", () => {
     expect(decodedTokenAccount.delegate.toString()).to.equal(
       program.programId.toString()
     );
+
+    // Fetch global listings after listing the NFT
+    globalListings = await program.account.globalListings.fetch(
+      globalListingsPda
+    );
+    const finalListingsCount = globalListings.listings.length;
+
+    // Check if the listing count increased by 1
+    expect(finalListingsCount).to.equal(initialListingsCount + 1);
+
+    // Check if the new listing is in the global listings account
+    const newListing = globalListings.listings.find(
+      (listing) =>
+        listing.mint.toString() === mint.publicKey.toString() &&
+        listing.seller.toString() === signer.publicKey.toString()
+    );
+    expect(newListing).to.not.be.undefined;
   });
 
   it("should fail to list NFT if lister is not the owner of NFT", async () => {

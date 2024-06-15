@@ -6,7 +6,6 @@ use crate::{constants, program::AnSmartContracts, GlobalListings, ListingReferen
 pub fn list_nft(ctx: Context<ListNft>, price: u64) -> Result<()> {
     let listing_info = &mut ctx.accounts.listing_info;
 
-    msg!("Listing NFT");
     msg!("Seller: {}", ctx.accounts.seller.key());
     msg!("Price: {}", price);
     msg!("Mint: {}", ctx.accounts.mint.key());
@@ -17,8 +16,6 @@ pub fn list_nft(ctx: Context<ListNft>, price: u64) -> Result<()> {
 
     // Ensure the seller actually owns the NFT
     let token_account = &ctx.accounts.token_account;
-    msg!("Token account owner: {}", token_account.owner);
-    msg!("Token account amount: {}", token_account.amount);
 
     require!(
         token_account.owner == ctx.accounts.seller.key(),
