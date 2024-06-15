@@ -71,6 +71,7 @@ describe("fn list", () => {
         })
         .signers([])
         .rpc();
+      throw new Error("Failed Test..");
     } catch (error) {
       expect((error as AnchorError).error.errorCode.code).equal(
         "AccountNotInitialized"
@@ -214,6 +215,7 @@ describe("fn list", () => {
         })
         .signers([nonOwner])
         .rpc();
+      throw new Error("Failed Test..");
     } catch (error) {
       expect((error as AnchorError).logs).to.exist;
     }

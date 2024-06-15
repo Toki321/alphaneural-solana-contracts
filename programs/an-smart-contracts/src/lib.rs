@@ -58,4 +58,8 @@ pub mod an_smart_contracts {
     ) -> Result<()> {
         modify_settings::modify_settings(ctx, admin, treasury, nft_sale_fee, sale_fee)
     }
+
+    pub fn increase_listings_space(ctx: Context<IncreaseListingsSpace>) -> Result<()> {
+        listings_space::increase_listings_space(ctx)
+    }
 }
