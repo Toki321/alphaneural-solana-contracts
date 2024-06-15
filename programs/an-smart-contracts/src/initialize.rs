@@ -22,6 +22,9 @@ pub fn initialize(
     admin_settings.nft_sale_fee = nft_sale_fee;
     admin_settings.sale_fee = sale_fee;
 
+    let global_listings = &mut ctx.accounts.global_listings_account;
+    global_listings.space = 10196;
+
     Ok(())
 }
 
@@ -66,6 +69,15 @@ pub const ADMIN_SETTINGS_SIZE: usize = 8 + // discriminator
 #[account]
 pub struct GlobalListings {
     pub listings: Vec<ListingReference>,
+    pub space: u64,
+}
+
+impl GlobalListings {
+    /// Adds 159 more listings to the current space allocated
+    pub fn get_realloc_size(&self) -> usize {
+        // 8 + 4 + ((self.listings.len() + 159) * (32 + 32))
+        self.space as usize + 10188
+    }
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
@@ -76,11 +88,12 @@ pub struct ListingReference {
 
 /// Solana has a limit of 10240 which is 10kb (1024 bytes x 10 = 10240) per init/reallloc
 /// We use the max number of listings we can store which is about 159.
-/// Which equates to 10192 bytes
+/// Which equates to roughly 10180 bytes
 /// Use Increase Listings Space function to increase the amount of listings we can store
 pub const GLOBAL_LISTINGS_SIZE: usize = 8 + // discriminator
 4 + // length of vector
-159 * (32+32); // 100 listings * (1mint + 1seller);
+8 + // space u64
+159 * (32+32); // 159 listings * (mintkey + sellerkey);
 
 #[error_code]
 pub enum AdminSettingsError {

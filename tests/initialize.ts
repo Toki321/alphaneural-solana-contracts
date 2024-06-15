@@ -30,6 +30,7 @@ describe("fn initialize", () => {
         })
         .signers([])
         .rpc();
+      throw new Error("Failed Test..");
     } catch (error) {
       expect((error as AnchorError).error.errorCode.code).eq("FeeTooBig");
     }
@@ -49,6 +50,7 @@ describe("fn initialize", () => {
         })
         .signers([])
         .rpc();
+      throw new Error("Failed Test..");
     } catch (error) {
       expect((error as AnchorError).error.errorCode.code).eq("FeeTooBig");
     }
@@ -75,6 +77,7 @@ describe("fn initialize", () => {
         })
         .signers([admin])
         .rpc();
+      throw new Error("Failed Test..");
     } catch (error) {
       expect((error as AnchorError).logs[6]).to.include("InvalidAccountData.");
     }
@@ -134,6 +137,7 @@ describe("fn initialize", () => {
         })
         .signers([])
         .rpc();
+      throw new Error("Failed Test..");
     } catch (error) {
       expect((error as AnchorError).logs[3]).to.include("already in use");
     }

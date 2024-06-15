@@ -13,7 +13,7 @@ import { publicKey } from "@metaplex-foundation/umi";
 import { createUmi } from "@metaplex-foundation/umi-bundle-defaults";
 import { expect } from "chai";
 
-describe.only("fn delist", () => {
+describe("fn delist", () => {
   const provider = anchor.AnchorProvider.env();
   anchor.setProvider(provider);
 
